@@ -23,12 +23,12 @@ type Logger struct {
 	fileSplitSize int64
 }
 
-func NewLogger(level int, logfilePath, logfileName string) *Logger {
+func NewLogger(level int, logfilePath, logfileName string, fileSplitSize int64) *Logger {
 	f1 := &Logger{
 		Level:         level,
 		logfileName:   logfileName,
 		logfilePath:   logfilePath,
-		fileSplitSize: 16,
+		fileSplitSize: fileSplitSize,
 	}
 	f1.initLogger()
 	return f1
@@ -92,7 +92,15 @@ func (l *Logger) Common(format string, a ...interface{}) {
 	}
 	size := stat.Size()
 	if size >= l.fileSplitSize {
-		os.Rename(stat.Name(), stat.Name()+"back_up"+string(time.Now().Unix()))
+		err := l.file.Close()
+		if err != nil {
+			fmt.Println("os rename %v", err)
+		}
+
+		err = os.Rename(stat.Name(), stat.Name()+"back_up"+string(time.Now().Unix()))
+		if err != nil {
+			fmt.Println("os rename %v", err)
+		}
 		file1, _ := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0655)
 		l.file = file1
 		fmt.Println("aaaaaaaaaaaaaaaaaaaa")
