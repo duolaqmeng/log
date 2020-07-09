@@ -16,17 +16,19 @@ const (
 )
 
 type Logger struct {
-	Level       int
-	logfilePath string
-	logfileName string
-	file        *os.File
+	Level         int
+	logfilePath   string
+	logfileName   string
+	file          *os.File
+	fileSplitSize int64
 }
 
 func NewLogger(level int, logfilePath, logfileName string) *Logger {
 	f1 := &Logger{
-		Level:       level,
-		logfileName: logfileName,
-		logfilePath: logfileName,
+		Level:         level,
+		logfileName:   logfileName,
+		logfilePath:   logfilePath,
+		fileSplitSize: 16,
 	}
 	f1.initLogger()
 	return f1
@@ -35,6 +37,7 @@ func NewLogger(level int, logfilePath, logfileName string) *Logger {
 func (l *Logger) initLogger() {
 	filepath := fmt.Sprintf("%s%s", l.logfilePath, l.logfileName)
 	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0655)
+
 	if err != nil {
 		panic("open file " + filepath + " error")
 	}
@@ -74,10 +77,31 @@ func (l *Logger) Error(format string, a ...interface{}) {
 }
 
 func (l *Logger) Common(format string, a ...interface{}) {
+	filepath := fmt.Sprintf("%s%s", l.logfilePath, l.logfileName)
+
 	timeStr := time.Now().Format("[2006-01-02 15:04:05.000]")
 	funcname, file, line := getCallerInfo()
+
 	format = fmt.Sprintf("[%s][-%s-] [%s %s:%d] %s",
 		timeStr, getLevelStr(l.Level), file, funcname, line, format)
+
+	stat, err := l.file.Stat()
+	fmt.Println(stat.Name())
+	if err != nil {
+		return
+	}
+	size := stat.Size()
+	if size >= l.fileSplitSize {
+		os.Rename(stat.Name(), stat.Name()+"back_up"+string(time.Now().Unix()))
+		file1, _ := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0655)
+		l.file = file1
+		fmt.Println("aaaaaaaaaaaaaaaaaaaa")
+
+		return
+	}
+	os.Rename(stat.Name(), stat.Name()+"back_up"+string(time.Now().Unix()))
 	fmt.Fprintf(l.file, format, a...)
 	fmt.Fprintln(l.file)
+	fmt.Println("bbbbbbbbbbbbbbbb")
+
 }
